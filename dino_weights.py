@@ -1,10 +1,11 @@
+import re, functools
+
+import torch
+import numpy as np
 import jax
 import jax.numpy as jnp
-import torch
-import re
-import functools
 
-from vit import DinoViT
+from model.vit import DinoViT
 
 
 def load_vit_params(params_jax: dict, vit_pt: torch.nn.Module):
@@ -124,4 +125,35 @@ def test_dino_vits():
 
 
 if __name__ == "__main__":
-    test_dino_vits()
+    # test_dino_vits()
+    import matplotlib.pyplot as plt
+    import tensorflow as tf
+    from PIL import Image
+
+
+    @tf.function
+    def load_image(image_path, size=(518, 518)):
+        image = tf.io.decode_jpeg(tf.io.read_file(image_path))
+        image = tf.image.resize(image, size, preserve_aspect_ratio=True, antialias=True)
+        image = tf.image.resize_with_crop_or_pad(image, size[0], size[1])
+        image = tf.cast(image, tf.float32) / 255.0
+        return image
+
+    path = "images/20240617_214714.jpg"
+    image = load_image(path)
+    image = np.asarray(image)
+    image = np.expand_dims(image, axis=0)
+
+    model, params = load_dino_vits()
+    embed_jax = model.apply({"params": params}, image, training=False)
+    embed_jax = np.asarray(embed_jax["x_norm_patchtokens"])
+
+    # show features map in one channel image to original image size
+    x = embed_jax[0]
+    x = x.reshape((37, 37, 384))
+    x = np.argmax(x, axis=-1, keepdims=True)
+    x = jax.image.resize(x, (518, 518, 1), method="bicubic")
+    x = x.squeeze()
+    plt.imshow(x)
+    plt.show()
+
