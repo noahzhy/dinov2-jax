@@ -1,10 +1,9 @@
+from typing import Type
+
 import jax
 import jax.numpy as jnp
 from flax import linen as nn
-import numpy as onp
-
-from typing import Type
-from functools import partial
+import numpy as np
 
 from mlp import Mlp
 from attention import Attention
@@ -105,3 +104,57 @@ class DinoViT(nn.Module):
             "x_norm_patchtokens": x_norm[:, 1:],
             "x_prenorm": x,
         }
+
+
+if __name__ == "__main__":
+    import torch
+    import matplotlib.pyplot as plt
+    from PIL import Image
+    import tensorflow as tf
+
+    from dino_weights import load_dino_vits
+
+    # model = DinoViT()
+    # rng = jax.random.PRNGKey(0)
+    # x = jax.random.normal(rng, (1, 224, 224, 3))
+    # load image from file
+    # resize image to 518x518 and keep aspect ratio, pad with black
+    # image = Image.open(path).convert("RGB")
+
+    @tf.function
+    def load_image(image_path, size=(518, 518)):
+        image = tf.io.decode_jpeg(tf.io.read_file(image_path))
+        image = tf.image.resize(image, size, preserve_aspect_ratio=True, antialias=True)
+        image = tf.image.resize_with_crop_or_pad(image, size[0], size[1])
+        image = tf.cast(image, tf.float32) / 255.0
+        return image
+
+    path = "images/20240617_214714.jpg"
+    image = load_image(path)
+    image = np.asarray(image)
+    image = np.expand_dims(image, axis=0)
+
+    model, params = load_dino_vits()
+    embed_jax = model.apply({"params": params}, image, training=False)
+    embed_jax = np.asarray(embed_jax["x_norm_patchtokens"])
+
+    # # Torch: forward pass
+    # image_torch = torch.from_numpy(np.asarray(image.transpose((0, 3, 1, 2)))).cpu()
+    # dinov2_vits14 = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14").cpu()
+    # dinov2_vits14 = dinov2_vits14.cpu()
+    # dinov2_vits14.eval()
+    # embed_torch = (
+    #     dinov2_vits14.forward_features(image_torch)["x_norm_patchtokens"]
+    #     .detach()
+    #     .cpu()
+    #     .numpy()
+    # )
+
+    # show features map in one channel image to original image size
+    x = embed_jax[0]
+    x = x.reshape((37, 37, 384))
+    x = jnp.mean(x, axis=-1, keepdims=True)
+    x = jax.image.resize(x, (518, 518, 1), method="bicubic")
+    x = x.squeeze()
+    plt.imshow(x)
+    plt.show()
