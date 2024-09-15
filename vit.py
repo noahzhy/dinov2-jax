@@ -109,17 +109,11 @@ class DinoViT(nn.Module):
 if __name__ == "__main__":
     import torch
     import matplotlib.pyplot as plt
-    from PIL import Image
     import tensorflow as tf
+    from PIL import Image
 
     from dino_weights import load_dino_vits
 
-    # model = DinoViT()
-    # rng = jax.random.PRNGKey(0)
-    # x = jax.random.normal(rng, (1, 224, 224, 3))
-    # load image from file
-    # resize image to 518x518 and keep aspect ratio, pad with black
-    # image = Image.open(path).convert("RGB")
 
     @tf.function
     def load_image(image_path, size=(518, 518)):
@@ -138,22 +132,10 @@ if __name__ == "__main__":
     embed_jax = model.apply({"params": params}, image, training=False)
     embed_jax = np.asarray(embed_jax["x_norm_patchtokens"])
 
-    # # Torch: forward pass
-    # image_torch = torch.from_numpy(np.asarray(image.transpose((0, 3, 1, 2)))).cpu()
-    # dinov2_vits14 = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14").cpu()
-    # dinov2_vits14 = dinov2_vits14.cpu()
-    # dinov2_vits14.eval()
-    # embed_torch = (
-    #     dinov2_vits14.forward_features(image_torch)["x_norm_patchtokens"]
-    #     .detach()
-    #     .cpu()
-    #     .numpy()
-    # )
-
     # show features map in one channel image to original image size
     x = embed_jax[0]
     x = x.reshape((37, 37, 384))
-    x = jnp.mean(x, axis=-1, keepdims=True)
+    x = np.argmax(x, axis=-1, keepdims=True)
     x = jax.image.resize(x, (518, 518, 1), method="bicubic")
     x = x.squeeze()
     plt.imshow(x)
