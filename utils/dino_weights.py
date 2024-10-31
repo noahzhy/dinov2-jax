@@ -1,4 +1,4 @@
-import re, functools
+import os, glob, random, re, functools
 
 import torch
 import numpy as np
@@ -44,7 +44,7 @@ def load_vit_params(params_jax: dict, vit_pt: torch.nn.Module):
     return jax.tree_util.tree_unflatten(jax_param_pytree, dinov2_params_flat)
 
 
-def load_dino_vits():
+def load_dino_vits(pretrained: bool=True):
     num_heads = 6
     embed_dim = 384
     mlp_ratio = 4
@@ -62,11 +62,12 @@ def load_dino_vits():
         "params"
     ]
 
-    dinov2_vits14 = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
+    if pretrained:
+        dinov2_vits14 = torch.hub.load("facebookresearch/dinov2", "dinov2_vits14")
+        params = load_vit_params(vit_params, dinov2_vits14)
+        return (vit_def, params)
 
-    params = load_vit_params(vit_params, dinov2_vits14)
-
-    return (vit_def, params)
+    return (vit_def, vit_params)
 
 
 def test_dino_vits():
@@ -139,7 +140,8 @@ if __name__ == "__main__":
         image = tf.cast(image, tf.float32) / 255.0
         return image
 
-    path = "images/20240617_214714.jpg"
+    path = "images/*.jpg"
+    path = random.choice(glob.glob(path))
     image = load_image(path)
     image = np.asarray(image)
     image = np.expand_dims(image, axis=0)

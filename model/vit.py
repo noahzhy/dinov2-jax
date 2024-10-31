@@ -5,11 +5,6 @@ import jax.numpy as jnp
 from flax import linen as nn
 import numpy as np
 
-# from mlp import Mlp
-# from attention import Attention
-# from block import Block
-# from patch_embed import PatchEmbed
-
 
 class LayerScale(nn.Module):
     initial_value: float = 1.0
